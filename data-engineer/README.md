@@ -25,19 +25,20 @@ When running the attribution process we want to de-duplicate these events: for a
 Two datasets in CSV format are provided for this challenge. Their schemas are provided below.
 
 ### Events
-This dataset contains a series of interactions of users with brands.
+This dataset contains a series of interactions of users with brands: [events.csv](events.csv)
 
 **Schema:**
 
 Column number | Column name  | Type | Description
 ------------- | ------------- | ------------- | -------------
 1  | timestamp | integer | Unix timestamp when the event happened.
-2  | advertiser_id | integer | The advertiser ID that the user interacted with.
-3 | user_id | string (UUIDv4) | An anonymous user ID that generated the event.
-4 | event_type | string | The type of event. Potential values: click, visit, purchase
+2  | event_id | string (UUIDv4) | Unique ID for the event.
+3  | advertiser_id | integer | The advertiser ID that the user interacted with.
+4 | user_id | string (UUIDv4) | An anonymous user ID that generated the event.
+5 | event_type | string | The type of event. Potential values: click, visit, purchase
 
 ### Impressions
-This dataset contains a series of ads displayed to users online for different advertisers.
+This dataset contains a series of ads displayed to users online for different advertisers: [impressions.csv](impressions.csv)
 
 **Schema:**
 
