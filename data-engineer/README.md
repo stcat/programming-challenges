@@ -11,10 +11,14 @@ The goal of this challenge is to write a simple attribution application that pro
 This application will run the following two operations on the provided datasets.
 
 ### Attribution
-The application will process input datasets that represent interactions with brands ("events") and ads displayed online ("impressions") to output some simple statistics:
+The application will process input datasets that represent interactions with brands ("events") and ads displayed online ("impressions") to compute "attributed events" and output some simple statistics.
 
- - The count of events for each advertiser, grouped by event type.
- - The count of unique users for each advertiser, grouped by event type.
+An "attributed event" is an event that happened after an impression chronologically and is considered to be the consequence of the user having seen an ad.
+
+The statistics that the application should compute are:
+
+ - The count of attributed events for each advertiser, grouped by event type.
+ - The count of unique users that have generated attributed events for each advertiser, grouped by event type.
 
 ### De-duplication
 Events are sometimes registered multiple times in the events dataset when they actually should be counted only once. For instance, a user might click on an ad twice by mistake.
