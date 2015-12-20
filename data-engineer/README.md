@@ -109,6 +109,8 @@ Column number | Column name  | Type | Description
 2 | event_type | string | The type of event. Potential values: click, visit, purchase
 3 | count | int | The count of unique users for this advertiser ID and event type.
 
+If a user had generated multiple event types for a given advertiser, the user should be counted multiple times (once for each event type). The sum of the unique users by group can be higher than the unique users of the advertiser across groups.
+
 # Rules of the game
 This challenge is a chance for MediaMath engineers to see how you code and organize a project to implement a specification.
 
