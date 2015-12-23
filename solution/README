@@ -1,0 +1,15 @@
+This project is first developed on local machine with Java Development Kit 1.7.0.45 and Hadoop 2.7.1
+The development environment setup is based on Apache Hadoop 2.7.1 Website[1,2].
+
+
+Preprocess:
+bin/hadoop com.sun.tools.javac.Main Preprocess.java
+jar cf preprocess.jar Preprocess*.class
+rm -rf output
+bin/hadoop jar preprocess.jar Preprocess input output
+cat output/part-r-* > attributedEvent.csv
+
+
+
+[1]Single Cluster Setup, https://hadoop.apache.org/docs/current/hadoop-project-dist/hadoop-common/SingleCluster.html
+[2]MapReduce Tutorial, https://hadoop.apache.org/docs/current/hadoop-mapreduce-client/hadoop-mapreduce-client-core/MapReduceTutorial.html
