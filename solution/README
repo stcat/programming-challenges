@@ -9,7 +9,12 @@ rm -rf output
 bin/hadoop jar preprocess.jar Preprocess input output
 cat output/part-r-* > attributedEvent.csv
 
-
+Count of evnets:
+bin/hadoop com.sun.tools.javac.Main CountOfEvents.java
+jar cf countofevents.jar CountOfEvents*.class
+rm -rf output
+bin/hadoop jar countofevents.jar CountOfEvents input output
+cat output/part-r-* > count_of_events.csv
 
 [1]Single Cluster Setup, https://hadoop.apache.org/docs/current/hadoop-project-dist/hadoop-common/SingleCluster.html
 [2]MapReduce Tutorial, https://hadoop.apache.org/docs/current/hadoop-mapreduce-client/hadoop-mapreduce-client-core/MapReduceTutorial.html
