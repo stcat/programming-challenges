@@ -1,10 +1,10 @@
 import java.io.IOException;
-import java.util.*;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.IntWritable;
-import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
@@ -20,12 +20,6 @@ public class CountOfEvents {
 		@Override
 		public void map(Object key, Text value, Context context) throws IOException, InterruptedException {
 			String[] item = value.toString().split(",");
-
-			if (item.length != 4) {
-				// in case of invalid input, increase robustness
-				return;
-			}
-
 			context.write(new Text(item[1] + ',' + item[3]), one);						// key = [advertiserID],[type]  
 		}
 	}
