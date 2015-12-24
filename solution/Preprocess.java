@@ -1,10 +1,15 @@
+import java.io.DataInput;
+import java.io.DataOutput;
 import java.io.IOException;
-import java.util.*;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.io.Text;
+import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.io.WritableComparable;
 import org.apache.hadoop.io.WritableComparator;
 import org.apache.hadoop.mapreduce.Job;
@@ -16,11 +21,56 @@ import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 
 public class Preprocess {
 
-	private static final String separator = ";";
+	private static class MyKey implements Writable, WritableComparable<MyKey> {
+		private Text adAndUserID;
+		private LongWritable timestamp;
 
-	public static class PreprocessMapper extends Mapper<Object, Text, Text, Text> {
-		private Text keyWord = new Text();
-		private Text valueWord = new Text();
+		public MyKey() {
+			this.adAndUserID = new Text();
+			this.timestamp = new LongWritable();
+		}
+
+		public MyKey(String adAndUserID, String timestamp) {
+			this.adAndUserID = new Text(adAndUserID);
+			this.timestamp = new LongWritable(Long.parseLong(timestamp));
+		}
+
+		@Override
+		public void write(DataOutput out) throws IOException {
+			adAndUserID.write(out);
+			timestamp.write(out);
+		}
+
+		@Override
+		public void readFields(DataInput in) throws IOException {
+			adAndUserID.readFields(in);
+			timestamp.readFields(in);
+		}
+
+		@Override
+		public int compareTo(MyKey o) {
+			int compareAdandUser = this.adAndUserID.compareTo(o.adAndUserID);
+			if (compareAdandUser != 0) {
+				return compareAdandUser;
+			}
+			return this.timestamp.compareTo(o.timestamp);
+		}
+
+		@Override
+		public int hashCode() {
+			return (adAndUserID.toString() + timestamp.get()).hashCode();
+		}
+
+		public Text getAdAndUser() {
+			return adAndUserID;
+		}
+
+		public LongWritable getTimestamp() {
+			return timestamp;
+		}
+	}
+
+	public static class PreprocessMapper extends Mapper<Object, Text, MyKey, Text> {
 
 		@Override
 		public void map(Object key, Text value, Context context) throws IOException, InterruptedException {
@@ -31,97 +81,69 @@ public class Preprocess {
 				return;
 			}
 
-			// insert some leading zeros to the timestamp in order to compare
-			StringBuilder tmp = new StringBuilder();
-			for (int i = item[0].length(); i < 10; i++) { 								// ten digits timestamp, will be enough in 270 years
-				tmp.append('0');
-			}
-			tmp.append(item[0]);
-			String timestamp = tmp.toString();
-
 			// distinguish impression and event based on the number of ','
 			switch (item.length) {
 				case 4:	
-					// This is an impression										
-					keyWord.set(item[1] + "," + item[3] + separator + timestamp);		// key = [advertiserID],[userID];[timestamp]
-					valueWord.set(item[0] + ",impression");								// value = [timestamp],impression
-					context.write(keyWord, valueWord);
+					// This is an impression
+					// key = [advertiserID],[userID] + [timestamp] 
+					// value = impression
+					context.write(new MyKey(item[1] + "," + item[3], item[0]), new Text("impression"));
 					break;
 				case 5:	
-					// This is an event										
-					keyWord.set(item[2] + "," + item[3] + separator + timestamp);		// key = [advertiserID],[userID];[timestamp]
-					valueWord.set(item[0] + "," + item[4]);								// value = [timestamp],[eventType]
-					context.write(keyWord, valueWord);
+					// This is an event
+					// key = [advertiserID],[userID] + [timestamp] 
+					// value = [eventType]
+					context.write(new MyKey(item[2] + "," + item[3], item[0]), new Text(item[4]));
 					break;
-				default:																// should not execute 														
+				default:																// should not execute
 			};
 		}
 	}
 
-	//Split the key into natural and augment
-	private static String getNaturalKey(Text compositeKey) {
-
-		String compositeString = compositeKey.toString();
-		int partition = compositeString.indexOf(separator);
-
-		if (partition == -1) { 															// should not execute
-			return compositeString;
-		}
-
-		return compositeString.substring(0, partition);
-	}
-
-	public static class PreprocessPartitioner extends Partitioner<Text, Text> {
+	public static class PreprocessPartitioner extends Partitioner<MyKey, Text> {
 
 		@Override
-		public int getPartition(Text compositeKey, Text value, int numReduceTasks) {
-			return getNaturalKey(compositeKey).hashCode() % numReduceTasks;
+		public int getPartition(MyKey key, Text value, int numReduceTasks) {
+			return key.getAdAndUser().hashCode();
 		}
 	}
 
 	public static class PreprocessGroupComparator extends WritableComparator {
+		
+		protected PreprocessGroupComparator() {  
+			super(MyKey.class, true);  
+		}
 
 		@Override
-		public int compare(byte[] b1, int s1, int l1, byte[] b2, int s2, int l2) {
-			return 0;
-		}
-		@Override
-		public int compare(WritableComparable compositeKey1, WritableComparable compositeKey2) {
-			return getNaturalKey((Text)compositeKey1).compareTo(getNaturalKey((Text)compositeKey2));
+		public int compare(WritableComparable key1, WritableComparable key2) {
+			return (((MyKey)key1).getAdAndUser()).compareTo(((MyKey)key2).getAdAndUser());
 		}
 	}
 
-	public static class PreprocessReducer extends Reducer<Text,Text,NullWritable,Text> {
+	public static class PreprocessReducer extends Reducer<MyKey,Text,NullWritable,Text> {
 		@Override
-		public void reduce(Text key, Iterable<Text> values, Context context) throws IOException, InterruptedException {
+		public void reduce(MyKey key, Iterable<Text> values, Context context) throws IOException, InterruptedException {
 			boolean impressioned = false;
 			Map<String, Long> prev = new HashMap<String, Long>();
 
 			for (Text val : values) {
-				String valString = val.toString();
-				int partition = valString.indexOf(',');
-
-				if (partition == -1) { 													// should not execute
-					continue;
-				}
-
-				long timestamp = Long.parseLong(valString.substring(0, partition));
-				String type = valString.substring(partition + 1);
+				LongWritable timestamp = key.getTimestamp();
+				String type = val.toString();
 
 				if (type.equals("impression")) {
 					impressioned = true;
 				} else if (impressioned) {
-					if (!prev.containsKey(type) || timestamp > prev.get(type) + 60) {
-						String[] keyString = key.toString().split(separator);
+					long time = timestamp.get();
+					if (!prev.containsKey(type) || time > prev.get(type) + 60) {
 						StringBuilder tmp = new StringBuilder();
-						tmp.append(keyString[1]);
+						tmp.append(time);
 						tmp.append(',');
-						tmp.append(keyString[0]);
+						tmp.append(key.getAdAndUser().toString());
 						tmp.append(',');
 						tmp.append(type);
 						context.write(NullWritable.get(), new Text(tmp.toString()));
 					}
-					prev.put(type, timestamp);
+					prev.put(type, time);
 				}
 			}
 		}
@@ -135,9 +157,8 @@ public class Preprocess {
 		job.setPartitionerClass(PreprocessPartitioner.class);
 		job.setGroupingComparatorClass(PreprocessGroupComparator.class);
 		job.setReducerClass(PreprocessReducer.class);
-		job.setOutputKeyClass(Text.class);
+		job.setOutputKeyClass(MyKey.class);
 		job.setOutputValueClass(Text.class);
-		conf.set("mapreduce.output.textoutputformat.separator", ",");
 		FileInputFormat.addInputPath(job, new Path(args[0]));
 		FileOutputFormat.setOutputPath(job, new Path(args[1]));
 		System.exit(job.waitForCompletion(true) ? 0 : 1);
