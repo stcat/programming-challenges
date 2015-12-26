@@ -1,4 +1,4 @@
-This project is first developed on local machine with Java Development Kit 1.7.0.45 and Hadoop 2.7.1
+UPDATE: this project produced the same results when run on AWS EMR with multiple nodes. This project is first developed on local machine with Java Development Kit 1.7.0.45 and Hadoop 2.7.1
 The development environment setup is based on Apache Hadoop 2.7.1 Website[1,2].
 
 Design Detail:
