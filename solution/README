@@ -1,6 +1,16 @@
 This project is first developed on local machine with Java Development Kit 1.7.0.45 and Hadoop 2.7.1
 The development environment setup is based on Apache Hadoop 2.7.1 Website[1,2].
 
+Design Detail:
+
+First we have to preprocess the data in order to get all the attributed events. By definition, attributed events are those events that happened chronologically after an impression with same advertiserID and userID. It is easy to come up with an idea that mapper takes the input of both impressions.csv and events.csv (they can be distinguished by the number of columns), then set advertiserID and userID as the key and set timestamp and event type as the value. When all events and impressions with the same advertiserID and userID are grouped together, we can find out the attributed events easily. However, MapReduce does not guarantee the order of values. For a single reducer, it has to cache all previous values until the last value is checked since the last value could be an impression that makes some events attributed. The space complexity would be O(N), which is not acceptable. We can use secondary sort to solve it.
+
+In my secondary design, the intermediate key between mapper and reducer will be a object of wrapped key class (MyKey) which consists of a Text of a combination of advertiserID and userID, and a LongWritable of timestamp. And the value will be type. We have to keep the general sort comparator as if we are sorting advertiserID, userID and timestamp, but we need to rewrite the partitioner and grouping comparator so that all keys with the same advertiserID and userID will be sent to the same reducer. By this way when we iterate the values in the reducer, they will be sorted chronologically. We only need to check if an impression occurs and keep track of all kinds of events that previously happended. That will be the preprocess part. 
+
+After preprocess, count of events part is easy. Simply group all the events by advertiserID and event type and count the number of them.
+
+Count of unique users will be similar to the preprocess part, where the key is advertiserID, event type and userID. General sort takes all three parts but partitioner and grouping comparator take only advertiserID and event type. By this way for a single reducer userIDs are sorted so that we only need to store the previous userID. We can compare current userID and the previous userID to identify if it is a new one (if so, increment the counter).
+
 mkdir input
 
 Preprocess:
